@@ -27,8 +27,27 @@ FOREIGN KEY(host_id) REFERENCES hosts(id) ON DELETE SET NULL ON UPDATE CASCADE
 _console = get_console()
 
 
-def rprint(*args, **kwargs):
-    _console.print(*args, **kwargs)
+def rprint(*args, highlight=False, **kwargs):
+    _console.print(*args, highlight=highlight, **kwargs)
+
+
+class FPingException(Exception):
+    # see the fping man page under Diagnostics
+    ret_codes = {0: 'all hosts are reachable',  # not acutally an error
+                 1: 'some hosts are unreachable',  # not acutally an error
+                 2: 'some IP addresses or hostnames were not found',
+                 3: 'invalid command line arguments',
+                 4: 'system call failure'}
+
+    def __init__(self, exit_code):
+        self.exit_code = exit_code
+        self.message = self.ret_codes[exit_code]
+        super().__init__(f'fping returned with an error: {self.message}')
+
+
+class FPingNotFound(Exception):
+    """ Raised if fping could not be found in $PATH """
+    pass
 
 
 def check_hosts(hosts: list[str], timeout_ms: Optional[int] = 50, reverse_lookup: bool = False,
@@ -61,7 +80,11 @@ def check_hosts(hosts: list[str], timeout_ms: Optional[int] = 50, reverse_lookup
         cmd.append('-d')
     if add_elapsed:
         cmd.append('-e')
+    if not sp.run(['which', 'fping'], capture_output=True).returncode == 0:
+        raise FPingNotFound()
     call = sp.run(cmd + hosts, capture_output=True)
+    if call.returncode >= 3:  # 3 is invalid command line options (should not happen), 4 is system call error
+        raise FPingException(call.returncode)
     pattern = r'(.*?) is ([a-z]+)'
     if add_elapsed:
         pattern += r'(?: \((\d+.\d+) ms\))?'  # non-capturing group at the outermost level
@@ -76,7 +99,7 @@ def check_hosts(hosts: list[str], timeout_ms: Optional[int] = 50, reverse_lookup
     df = df.set_index('machine')
     if add_elapsed:
         df['ping'] = df['ping'].replace('', np.nan).astype('float')
-    if (n_err := len(hosts) - len(df)) != 0:
+    if (n_err := len(hosts) - len(df)) != 0:  # could also use: call.returncode == 2:  # return code for: some IP addresses were not found
         if reverse_lookup and include_failed_dns:
             warnings.warn('Arguments `include_failed_dns` and `reverse_lookup` are mutually exclusive. Hosts with failed DNS lookup are not included in the result.')
             include_failed_dns = False
@@ -115,7 +138,7 @@ if __name__ == "__main__":
             exit(1)
         with open(args.sqlite, 'rb') as fp:
             if not fp.read(16) == b'SQLite format 3\x00':  # SQLite header string according to https://www.sqlite.org/fileformat.html#the_database_header
-                rprint(f'[red b]ERROR[/]: Please pass a path to a valid SQLite 3 database file after the [dim]--sqlite[/] argument.', highlight=False)
+                rprint(f'[red b]ERROR[/]: Please pass a path to a valid SQLite 3 database after the [dim]--sqlite[/] argument.')
                 exit(1)
         db = sqlite3.connect(args.sqlite)
         hosts_db = pd.read_sql_query('select * from hosts', db, index_col='id', parse_dates={'installation_date': 's', 'last_change_date': 's'})  # add additional date columns here
@@ -126,14 +149,23 @@ if __name__ == "__main__":
     
     # ping all hosts
     start = time.time()
-    df = check_hosts(hosts, timeout_ms=args.timeout, reverse_lookup=args.reverse, add_elapsed=args.elapsed, include_failed_dns=not args.exclude_failed)
+    try:
+        df = check_hosts(hosts, timeout_ms=args.timeout, reverse_lookup=args.reverse, add_elapsed=args.elapsed, include_failed_dns=not args.exclude_failed)
+    except FPingException as err:
+        rprint(f'[red b]ERROR[/]: fping returned with: {err.message}')
+        if err.exit_code == 4:  # system call failure, usually because fping needs to have the right file capabilities to be run as non-priviledged user
+            rprint('[red b]ERROR[/]: make sure fping has the right permissions (i.e. try "[dim]sudo setcap cap_net_raw+ep `which fping`[dim]" on linux)')
+        exit(1)
+    except FPingNotFound:
+        rprint('[red b]ERROR[/]: fping was not found. Please install it first and make sure it is executable and in $PATH.')
+        exit(1)
     end = time.time()
 
     if args.table:  # print a nicely indented table if specified
         print(df.to_string() + '\n')
     if args.summary or not args.table:  # default: print a short summary message
         now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        rprint(f'[dim]\[{now}][/] [b green]{df.reachable.sum()}[/] hosts are up, [b red]{(~df.reachable.fillna(False)).sum()}[/] are down [dim](took {end-start:.1f} s)[/]', highlight=False)
+        rprint(f'[dim]\[{now}][/] [b green]{df.reachable.sum()}[/] hosts are up, [b red]{(~df.reachable.fillna(False)).sum()}[/] are down [dim](took {end-start:.1f} s)[/]')
     if args.sqlite is not None:  # store in the database if specified
         df_sqlite = df.join(hosts_db.reset_index().set_index('hostname'), on='machine').dropna(subset='id').astype({'id': 'int'})
         df_sqlite = df_sqlite.rename(columns={'ts': 'timestamp', 'id': 'host_id', 'reachable': 'online', 'ping': 'latency_ms'})
