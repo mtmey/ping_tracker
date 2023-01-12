@@ -54,3 +54,20 @@ google.com,True,1673391457
 1.1.1.1,True,1673391457
 ```
 To append results to an existing CSV file, add the `--append` option to above command.
+
+The same can also be achieved using a SQLite database (with [sqlite3](https://www.sqlite.org/index.html) installed):
+```bash
+sqlite3 test.db "CREATE TABLE IF NOT EXISTS hosts (id INTEGER PRIMARY KEY, hostname TEXT NOT NULL); INSERT INTO hosts (hostname) VALUES ('google.com'), ('1.1.1.1');"
+python poll.py --elapsed --sql=test.db
+```
+To show the time series data (further polls are automatically appended to the `ts` table) use
+```bash
+sqlite3 test.db -column -header "SELECT timestamp, hostname, online, latency_ms FROM ts INNER JOIN hosts ON hosts.id = ts.host_id;"
+```
+which will result in something like:
+```
+timestamp   hostname    online      latency_ms
+----------  ----------  ----------  ----------
+1673558565  google.com  1           3.51      
+1673558565  1.1.1.1     1           3.64
+```
