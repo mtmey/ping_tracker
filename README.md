@@ -62,12 +62,12 @@ python poll.py --elapsed --sql=test.db
 ```
 To show the time series data (further polls are automatically appended to the `ts` table) use
 ```bash
-sqlite3 test.db -column -header "SELECT timestamp, hostname, online, latency_ms FROM ts INNER JOIN hosts ON hosts.id = ts.host_id;"
+sqlite3 test.db -column -header "SELECT datetime(timestamp, 'unixepoch', 'localtime') datetime, hostname, online, latency_ms FROM ts INNER JOIN hosts ON hosts.id = ts.host_id;"
 ```
 which will result in something like:
 ```
-timestamp   hostname    online      latency_ms
-----------  ----------  ----------  ----------
-1673558565  google.com  1           3.51      
-1673558565  1.1.1.1     1           3.64
+datetime             hostname    online      latency_ms
+-------------------  ----------  ----------  ----------
+2023-01-12 22:24:36  google.com  1           3.54      
+2023-01-12 22:24:36  1.1.1.1     1           3.45
 ```
