@@ -71,3 +71,8 @@ datetime             hostname    online      latency_ms
 2023-01-12 22:24:36  google.com  1           3.54      
 2023-01-12 22:24:36  1.1.1.1     1           3.45
 ```
+If you want to check the online status periodically, you may install a cronjob (using `crontab -e` on linux) by adding the following line:
+```
+*/15 * * * * bash -c "( cd ~/ping_tracker && source .venv/bin/activate && python poll.py --elapsed --sql=test.db ) >> ~/ping_tracker.log 2>&1"
+```
+This will run the script every 15 minutes (`*/15`, adjust as needed) and log the script's output to your home folder (into `ping_tracker.log`). Make sure to setup a virtual python environment inside the `~/ping_tracker` script folder as shown above. The host statuses are recorded inside the `ts` table of `test.db` in this example.
