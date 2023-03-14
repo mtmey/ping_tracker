@@ -51,7 +51,7 @@ class FPingNotFound(Exception):
 
 
 def check_hosts(hosts: list[str], timeout_ms: Optional[int] = 50, reverse_lookup: bool = False,
-                add_elapsed: bool = False, include_failed_dns: bool = False) -> pd.DataFrame:
+                add_elapsed: bool = False, ipv4_only: bool = True, include_failed_dns: bool = False) -> pd.DataFrame:
     """
     Pings all specified `hosts` using the `fping` command line utility, and returns a DataFrame with the following columns:
 
@@ -65,6 +65,7 @@ def check_hosts(hosts: list[str], timeout_ms: Optional[int] = 50, reverse_lookup
         timeout_ms (int, optional): Time in milliseconds before a ping times out. If `None`, use `fping`s default value. Defaults to 50.
         reverse_lookup (bool, optional): Equivalent to the `-d` option of the `fping` command (DNS reverse lookup hostname before pinging it). Cannot be used if `include_failed_dns` is set. Defaults to `False`.
         add_elapsed (bool, optional): If `True`, adds a fourth column `ping` with the ping latency in milliseconds (float). Will be `NaN` for non-reachable hosts. Defaults to `False`.
+        ipv4_only (bool, optional): If `True`, instruct `fping` to restrict name resolution and IPs to IPv4 only, useful if no IPv6 hosts are in the network. Defaults to `True`.
         include_failed_dns (bool, optional): If `True`, hosts which are not resolvable by the DNS server will be included in the result and `reachable` will be `NaN`.
                                              If `False`, those hosts will not be included in the result and a warning will be printed instead. Defaults to `False`.
 
@@ -80,6 +81,8 @@ def check_hosts(hosts: list[str], timeout_ms: Optional[int] = 50, reverse_lookup
         cmd.append('-d')
     if add_elapsed:
         cmd.append('-e')
+    if ipv4_only:
+        cmd.append('--ipv4')
     if not sp.run(['which', 'fping'], capture_output=True).returncode == 0:
         raise FPingNotFound()
     call = sp.run(cmd + hosts, capture_output=True)
@@ -122,6 +125,7 @@ if __name__ == "__main__":
     parser.add_argument('--elapsed', '-e', action='store_true', help='record elapsed time in milliseconds (ping latency)')
     parser.add_argument('--exclude_failed', '-f', action='store_true', help='do not include hosts with failed DNS resolution in the result')
     parser.add_argument('--reverse', '-r', action='store_true', help='use reverse DNS lookup on provided IPs and hostnames')
+    parser.add_argument('--ipv6', '-6', action='store_true', help='also resolve IPv6 addresses (by default, only IPv4 addresses are DNS resolved)')
     parser.add_argument('--summary', '-s', action='store_true', help='show a summary after completion (displayed by default if `--table` option is not set)')
     parser.add_argument('--table', '-v', action='store_true', help='print a table with all results to stdout (verbose)')
     parser.add_argument('--csv', '-c', type=Path, default=None, help='CSV output file path, will overwrite any contents if the `--append` option is net set')
@@ -150,7 +154,8 @@ if __name__ == "__main__":
     # ping all hosts
     start = time.time()
     try:
-        df = check_hosts(hosts, timeout_ms=args.timeout, reverse_lookup=args.reverse, add_elapsed=args.elapsed, include_failed_dns=not args.exclude_failed)
+        df = check_hosts(hosts, timeout_ms=args.timeout, reverse_lookup=args.reverse, add_elapsed=args.elapsed,
+                         ipv4_only=not args.ipv6, include_failed_dns=not args.exclude_failed)
     except FPingException as err:
         rprint(f'[red b]ERROR[/]: fping returned with: {err.message}')
         if err.exit_code == 4:  # system call failure, usually because fping needs to have the right file capabilities to be run as non-priviledged user
