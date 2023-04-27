@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite the following paper."
+title: "ping_tracker"
+authors:
+  - family-names: "Meyer"
+    given-names: "Manfred T."
+    orcid: "https://orcid.org/0009-0007-1858-0030"
+version: "1.2"
+date-released: "2023-03-15"
+repository-code: "https://github.com/mtmey/ping_tracker"
+url: "https://github.com/mtmey/ping_tracker"
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Heye"
+      given-names: "Tobias"
+      orcid: "https://orcid.org/0000-0001-9949-0545"
+    - family-names: "Meyer"
+      given-names: "Manfred T."
+      orcid: "https://orcid.org/0009-0007-1858-0030"
+    - family-names: "Merkle"
+      given-names: "Elmar M."
+      orcid: "https://orcid.org/0000-0001-6894-0507"
+    - family-names: "Vosshenrich"
+      given-names: "Jan"
+      orcid: "https://orcid.org/0000-0003-3323-8472"
+  doi: "10.1148/radiol.230162"
+  journal: "Radiology"
+  month: 4
+  title: "Turn It Off! A Simple Method to Save Energy and CO2 Emissions in a Hospital Setting with Focus on Radiology by Monitoring Nonproductive Energy-consuming Devices"
+  year: 2023
