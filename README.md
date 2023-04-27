@@ -1,6 +1,10 @@
-# Ping tracker
+# Turn It Off: Ping tracker
 
-This project provides a simple Python script to send ICMP echo requests (a.k.a. `ping`) to a list of network devices and store the results in a simple database. It was developed to track the online status of hospital devices in order to identify devices that could potentially be shut down during off-hours to save energy.
+This project offers a streamlined Python script that facilitates sending ICMP echo requests (commonly known as `ping`) to multiple network devices and subsequently stores the results in a simple database. Its primary aim is to monitor the online status of hospital devices, enabling the identification of devices that can be safely powered down during off-hours, ultimately resulting in energy savings.
+
+If you choose to utilize this software, kindly reference the following research paper:
+
+> Heye, T., Meyer, M. T., Merkle, E. M., & Vosshenrich, J. (2023). Turn It Off! A Simple Method to Save Energy and CO2 Emissions in a Hospital Setting with Focus on Radiology by Monitoring Nonproductive Energy-consuming Devices. Radiology. https://doi.org/10.1148/radiol.230162
 
 # Installation
 The script relies on the [`fping`](https://github.com/schweikert/fping) utility, which can be easily installed on recent Debian/Ubuntu distributions using:
