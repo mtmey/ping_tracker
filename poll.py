@@ -119,7 +119,7 @@ def check_hosts(hosts: list[str], timeout_ms: Optional[int] = 50, reverse_lookup
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Pings a list of hosts to check if they are online',
-                                     epilog='Written by Manfred T. Meyer, University Hospital Basel. If you use this tool, please cite ???.')
+                                     epilog='Written by Manfred T. Meyer, University Hospital Basel. If you use this tool, please cite https://pubs.rsna.org/doi/10.1148/radiol.230162')
     parser.add_argument('hosts', nargs='*', help='path(s) to text files with hosts to ping, one hostname or IP address per line')
     parser.add_argument('--timeout', '-t', type=int, default=50, help='ping timeout in milliseconds (integer, default: 50)')
     parser.add_argument('--elapsed', '-e', action='store_true', help='record elapsed time in milliseconds (ping latency)')
@@ -144,7 +144,7 @@ if __name__ == "__main__":
             if not fp.read(16) == b'SQLite format 3\x00':  # SQLite header string according to https://www.sqlite.org/fileformat.html#the_database_header
                 rprint(f'[red b]ERROR[/]: Please pass a path to a valid SQLite 3 database after the [dim]--sqlite[/] argument.')
                 exit(1)
-        db = sqlite3.connect(args.sqlite)
+        db = sqlite3.connect(args.sqlite, timeout=60.)  # use a high timeout since redash can block the db resulting in OperationalError
         hosts_db = pd.read_sql_query('select * from hosts', db, index_col='id', parse_dates={'installation_date': 's', 'last_change_date': 's'})  # add additional date columns here
         hosts.extend(hosts_db['hostname'].to_list())
     else:
